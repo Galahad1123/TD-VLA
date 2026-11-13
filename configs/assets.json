@@ -1,0 +1,14 @@
+{
+  "robotwin": {
+    "repo_id": "TianxingChen/RoboTwin2.0",
+    "repo_type": "dataset",
+    "revision": "3dc3b798668feb99ac61cc9086d84cbcc3d79186",
+    "files": ["embodiments.zip", "objects.zip", "background_texture.zip"]
+  },
+  "reference_policy": {
+    "repo_id": "H-EmbodVis/TurboVLA",
+    "repo_type": "model",
+    "revision": "9cdb576ed9c56039b9c1149142ed654e876bad76",
+    "files": ["config.yaml", "dataset_statistics.json", "checkpoints/robotwin/steps_150000_ema_pytorch_model.pt"]
+  }
+}

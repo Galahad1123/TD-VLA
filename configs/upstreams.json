@@ -1,0 +1,14 @@
+{
+  "TurboVLA": {
+    "url": "https://github.com/H-EmbodVis/TurboVLA.git",
+    "commit": "650a288f829f549bea18e2173d3f51e77d3fbb74"
+  },
+  "RoboTwin": {
+    "url": "https://github.com/RoboTwin-Platform/RoboTwin.git",
+    "commit": "bf44be51cf5717a5595ce59447f2cf5263d2aa95"
+  },
+  "curobo": {
+    "url": "https://github.com/NVlabs/curobo.git",
+    "commit": "d64c4b005459db10c5dd867d8b30a87d5bda9bdb"
+  }
+}

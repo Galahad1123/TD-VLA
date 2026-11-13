@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "td-vla"
+version = "0.1.0"
+description = "Parallel multi-stream VLA research"
+requires-python = ">=3.10,<3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest==8.3.5", "ruff==0.11.13"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/td_vla"]
+
+[tool.uv]
+required-version = "==0.11.28"
+
+[[tool.uv.index]]
+name = "tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
