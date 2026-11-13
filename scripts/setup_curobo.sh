@@ -5,6 +5,10 @@ export CUDA_HOME=/usr/local/cuda-12.8
 export PATH="$CUDA_HOME/bin:$PATH"
 export TORCH_CUDA_ARCH_LIST=12.0
 export MAX_JOBS="${MAX_JOBS:-4}"
+[[ "$(git -C "$TD_VLA_REPO_ROOT/external/curobo" rev-parse HEAD)" == \
+   d64c4b005459db10c5dd867d8b30a87d5bda9bdb ]] || { echo 'Unexpected cuRobo revision' >&2; exit 1; }
+# A SHA-only shallow checkout lacks tags needed by setuptools-scm.
+export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_NVIDIA_CUROBO=0.7.8
 [[ -x "$CUDA_HOME/bin/nvcc" ]] || { echo 'Run setup_system.sh first' >&2; exit 1; }
 # Runtime/build dependencies are explicitly pinned in envs/sim/uv.lock.
 uv pip install --python "$ROBOTWIN_PYTHON" --no-build-isolation --no-deps \

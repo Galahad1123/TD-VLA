@@ -26,6 +26,10 @@ bash scripts/setup_system.sh
 bash scripts/setup_env.sh sim
 bash scripts/setup_curobo.sh
 "$ROBOTWIN_PYTHON" scripts/patch_sim.py
+# Blackwell: download the exact URL in configs/oidn.json to the data cache.
+curl -fL --retry 3 -o "$TD_VLA_STORAGE_ROOT/cache/oidn-2.3.3.tar.gz" \
+  https://github.com/RenderKit/oidn/releases/download/v2.3.3/oidn-2.3.3.x86_64.linux.tar.gz
+"$ROBOTWIN_PYTHON" scripts/setup_oidn.py "$TD_VLA_STORAGE_ROOT/cache/oidn-2.3.3.tar.gz"
 python3 scripts/download_assets.py robotwin
 ```
 
@@ -49,6 +53,7 @@ source scripts/env.sh
 "$STARVLA_PYTHON" scripts/check_gpu.py
 "$STARVLA_PYTHON" -m torch.distributed.run --standalone --nproc_per_node=2 scripts/check_gpu.py
 "$ROBOTWIN_PYTHON" scripts/check_render.py --output "$TD_VLA_STORAGE_ROOT/logs/p1/render"
+"$ROBOTWIN_PYTHON" scripts/check_render.py --ray-tracing --output "$TD_VLA_STORAGE_ROOT/logs/p1/render-rt"
 ```
 
 实际 GPU、任务回放与通信结果另见执行记录。安装完成和基础渲染通过都不代表专家任务成功。
@@ -60,7 +65,12 @@ source scripts/env.sh
 
 远端代码 `/root/TD-VLA`，环境位于其 `.venv` 和 `envs/*/.venv`。
 大文件根目录默认 `/root/autodl-tmp/td-vla`，可用 TD_VLA_STORAGE_ROOT 覆盖。
-数据盘不等同于备份，实例释放持久化与外部归档位置尚待确认。
+正式运行目录为 outputs/<run-id> 和 logs/<run-id>；阶段结束后在本机项目的
+outputs/archive/<run-id> 保留检查点、配置、指标及环境报告的第二份副本，并校验 SHA256。
+本阶段只有验收产物，已回传本机 logs/p1；完整数据集的异地存储容量须在 P3 生成前另行安排。
+根据 [AutoDL 存储说明](https://www.autodl.com/docs/instance_data/)，关机保留数据、
+释放实例清空数据；普通容器连续关机 15 天会释放，实例租用截止时间须以控制台为准。
+本机与远端目录均不应被视为无限容量或永久可靠存储。
 
 ## 扩展运行检查
 
@@ -93,3 +103,16 @@ uv sync --locked --python 3.10.19 --group asset-tools
 该入口使用 [remotezip](https://github.com/gtsystem/python-remotezip) 范围读取官方压缩包，
 保留未修改的资产文件及逐文件 CRC/SHA256；仅支持当前先导任务，不能用于宣称完整六任务资产齐备。
 不要在同一资产链接上混用完整与最小安装；脚本遇到已有不同目标时会停止。
+
+## Blackwell 兼容修复
+
+- env.sh 默认 NCCL_IB_DISABLE=1。本容器暴露的 IB 接口使 NCCL 初始化挂起；
+  关闭 IB 后双卡 all-reduce 和 DDP 更新通过。未关闭 GPU P2P，未验证多机训练。
+- SAPIEN 保留 3.0.0b1，单独将 OIDN 换为 2.3.3；该版本的
+  [官方发布说明](https://github.com/RenderKit/oidn/releases/tag/v2.3.3)列出 Blackwell 支持。
+  按 [SAPIEN 上游问题记录](https://github.com/haosulab/SAPIEN/issues/243)替换三个库及加载路径，
+  configs/oidn.json 固定下载校验值，setup_oidn.py 保留旧库和加载脚本备份。
+- 每次重新安装 SAPIEN 后重新执行 patch_sim.py、setup_oidn.py；锁文件不包含 wheel 安装后的补丁。
+  光追验收会检查 CUDA 去噪器初始化失败，不能仅凭图片非空判定通过。
+- Git bundle 中转浅克隆时需一并保留 .git/shallow。setup_curobo.sh 先核验源码 SHA，
+  再显式提供 0.7.8 给 setuptools-scm，避免仅按 SHA 获取源码时缺失 tag 造成版本号错误。

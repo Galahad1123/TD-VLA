@@ -15,3 +15,10 @@ export TMPDIR="$TD_VLA_STORAGE_ROOT/cache/tmp"
 export ROBOTWIN_PATH="$TD_VLA_REPO_ROOT/external/RoboTwin"
 export STARVLA_PYTHON="$TD_VLA_REPO_ROOT/envs/policy/.venv/bin/python"
 export ROBOTWIN_PYTHON="$TD_VLA_REPO_ROOT/envs/sim/.venv/bin/python"
+
+if [[ -f /etc/vulkan/icd.d/nvidia_icd.json ]]; then
+    export VK_ICD_FILENAMES="${VK_ICD_FILENAMES:-/etc/vulkan/icd.d/nvidia_icd.json}"
+fi
+# This deployment is single-node; exposed IB devices hang during NCCL initialization.
+# Override with 0 only after validating the fabric for a future multi-node deployment.
+export NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"

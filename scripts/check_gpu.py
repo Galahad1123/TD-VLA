@@ -1,4 +1,5 @@
 """Real GPU forward/backward and optional two-process NCCL check."""
+from datetime import timedelta
 import json
 import os
 
@@ -23,7 +24,9 @@ def main():
         results.append({"device": device, "name": torch.cuda.get_device_name(device),
                         "capability": torch.cuda.get_device_capability(device), "sdpa": "pass"})
     if distributed:
-        dist.init_process_group("nccl")
+        print(json.dumps({"rank": rank, "stage": "before_nccl_init"}), flush=True)
+        dist.init_process_group("nccl", timeout=timedelta(seconds=90))
+        print(json.dumps({"rank": rank, "stage": "before_all_reduce"}), flush=True)
         x = torch.tensor([float(rank + 1)], device=f"cuda:{rank}")
         dist.all_reduce(x)
         world = dist.get_world_size()
