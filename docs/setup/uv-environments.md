@@ -67,6 +67,7 @@ source scripts/env.sh
 ```bash
 "$STARVLA_PYTHON" scripts/check_model.py --fixtures "$TD_VLA_STORAGE_ROOT/cache/model-fixtures"
 "$ROBOTWIN_PYTHON" scripts/prepare_robotwin_assets.py
+(cd external/RoboTwin && "$ROBOTWIN_PYTHON" script/update_embodiment_config_path.py)
 "$ROBOTWIN_PYTHON" scripts/check_episode.py --output "$TD_VLA_STORAGE_ROOT/logs/p1/episode"
 ```
 
@@ -80,3 +81,15 @@ source scripts/env.sh
 
 第三方代码使用其原许可，详见 external 中上游 LICENSE、TurboVLA/third_party/licenses，
 以及 cuRobo/LICENSE_ASSETS。资产清单记录来源，不授予再分发许可。
+
+慢网络下只运行 P1 Clean 订书机任务，可用最小资产流程代替完整三压缩包：
+
+```bash
+uv sync --locked --python 3.10.19 --group asset-tools
+.venv/bin/python scripts/fetch_minimal_assets.py
+(cd external/RoboTwin && ../../.venv/bin/python script/update_embodiment_config_path.py)
+```
+
+该入口使用 [remotezip](https://github.com/gtsystem/python-remotezip) 范围读取官方压缩包，
+保留未修改的资产文件及逐文件 CRC/SHA256；仅支持当前先导任务，不能用于宣称完整六任务资产齐备。
+不要在同一资产链接上混用完整与最小安装；脚本遇到已有不同目标时会停止。

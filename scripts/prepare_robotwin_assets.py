@@ -4,14 +4,14 @@ import os
 from pathlib import Path
 import zipfile
 
-from download_assets import digest
+from download_assets import verify_cached_asset
 
 ROOT = Path(__file__).resolve().parents[1]
 base = Path(os.environ["TD_VLA_STORAGE_ROOT"]) / "assets/robotwin"
 for stem in ("embodiments", "objects", "background_texture"):
     archive = base / f"{stem}.zip"
-    receipt = json.loads(archive.with_suffix(".zip.receipt.json").read_text())
-    assert digest(archive) == receipt["sha256"], f"Checksum mismatch: {archive}"
+    spec = json.loads((ROOT / "configs/assets.json").read_text())["robotwin"]
+    receipt = verify_cached_asset(archive, spec, archive.name)
     extracted = base / "extracted"
     extracted.mkdir(exist_ok=True)
     marker = extracted / f".{stem}-{receipt['sha256']}.done"

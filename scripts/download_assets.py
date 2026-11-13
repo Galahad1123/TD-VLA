@@ -10,6 +10,16 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def verify_cached_asset(path, spec, filename):
+    receipt = json.loads(path.with_suffix(path.suffix + ".receipt.json").read_text())
+    for key in ("repo_id", "repo_type", "revision"):
+        if receipt.get(key) != spec[key]:
+            raise ValueError(f"Asset origin mismatch ({key}): {path}")
+    if receipt.get("file") != filename or receipt.get("sha256") != digest(path):
+        raise ValueError(f"Asset checksum or filename mismatch: {path}")
+    return receipt
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("asset", choices=["robotwin", "reference_policy"])
@@ -25,11 +35,10 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
         receipt_path = path.with_suffix(path.suffix + ".receipt.json")
         if path.exists() and receipt_path.exists():
-            receipt = json.loads(receipt_path.read_text())
-            if receipt["revision"] == spec["revision"] and receipt["sha256"] == digest(path):
-                receipts.append(receipt)
-                print(f"verified existing {filename}", flush=True)
-                continue
+            receipt = verify_cached_asset(path, spec, filename)
+            receipts.append(receipt)
+            print(f"verified existing {filename}", flush=True)
+            continue
         partial = path.with_suffix(path.suffix + ".partial")
         for endpoint in dict.fromkeys([os.environ.get("HF_ENDPOINT", "https://hf-mirror.com"),
                                        "https://huggingface.co"]):
