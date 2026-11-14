@@ -79,3 +79,22 @@ def test_interrupted_annotation_is_not_published_and_can_resume(tmp_path):
     assert m.annotate_atomic(None, final, [], succeed) == {"status": "ok"}
     assert (final / "review.jpg").exists()
     assert not final.with_name(final.name + ".partial").exists()
+
+
+def test_two_workers_per_gpu_have_distinct_slots():
+    m = runner()
+    assert m.worker_slots(["0", "1"], 2) == [("0", 0), ("1", 0), ("0", 1), ("1", 1)]
+
+
+def test_validation_budget_prevents_extra_attempts_per_task():
+    m = runner()
+    records = [dict(task="a", seed=0, success=False), dict(task="b", seed=0, success=True)]
+    assert m.next_episode(
+        ["a", "b"], records, set(), 50, 500, submitted={"a": 4, "b": 3}, attempts_per_task=4
+    ) == ("b", 1)
+    assert (
+        m.next_episode(
+            ["a", "b"], records, set(), 50, 500, submitted={"a": 4, "b": 4}, attempts_per_task=4
+        )
+        is None
+    )

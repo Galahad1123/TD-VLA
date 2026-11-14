@@ -1,4 +1,4 @@
-"""Resume six-task Clean collection with one child per GPU and v4 annotation."""
+"""Resume six-task Clean collection with configurable workers per GPU and v4 annotation."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
@@ -23,9 +23,19 @@ TASKS = [
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def next_episode(tasks, records, busy, target, max_attempts):
+def worker_slots(gpus, workers_per_gpu):
+    if workers_per_gpu < 1:
+        raise ValueError("workers_per_gpu must be positive")
+    return [(gpu, slot) for slot in range(workers_per_gpu) for gpu in gpus]
+
+
+def next_episode(
+    tasks, records, busy, target, max_attempts, *, submitted=None, attempts_per_task=0
+):
     candidates = []
     for task in tasks:
+        if attempts_per_task and (submitted or {}).get(task, 0) >= attempts_per_task:
+            continue
         rows = [r for r in records if r["task"] == task]
         successes = sum(bool(r["success"]) for r in rows)
         if successes >= target or task in busy:
@@ -140,12 +150,25 @@ def main():
     p.add_argument("--max-attempts", type=int, default=500)
     p.add_argument("--timeout", type=int, default=900)
     p.add_argument("--gpus", default="0,1")
+    p.add_argument("--workers-per-gpu", type=int, default=1)
+    p.add_argument("--attempts-per-task", type=int, default=0)
     p.add_argument("--sim-python", type=Path, default=ROOT / "envs/sim/.venv/bin/python")
     a = p.parse_args()
     a.data, a.labels, a.logs = a.data.resolve(), a.labels.resolve(), a.logs.resolve()
     gpus = a.gpus.split(",")
-    if a.target < 1 or a.max_attempts < a.target or a.timeout < 1 or len(set(gpus)) != len(gpus):
+    if (
+        a.target < 1
+        or a.max_attempts < a.target
+        or a.timeout < 1
+        or len(set(gpus)) != len(gpus)
+        or a.workers_per_gpu < 1
+        or a.attempts_per_task < 0
+    ):
         p.error("Invalid target, attempts, timeout or duplicate GPUs")
+    slots = worker_slots(gpus, a.workers_per_gpu)
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    run_started = time.monotonic()
+    submitted = {task: 0 for task in TASKS}
     a.logs.mkdir(parents=True, exist_ok=True)
     lock = acquire_dataset_lock(a.data)
     a.labels.mkdir(parents=True, exist_ok=True)
@@ -179,6 +202,7 @@ def main():
         sim_python=str(a.sim_python.resolve()),
         tasks=TASKS,
         gpus=gpus,
+        workers_per_gpu=a.workers_per_gpu,
         source_sha256=source_hashes,
         schema=SCHEMA,
         git_commit=subprocess.check_output(
@@ -216,6 +240,11 @@ def main():
                 pid=os.getpid(),
                 updated_utc=datetime.now(timezone.utc).isoformat(),
                 target_per_task=a.target,
+                workers_per_gpu=a.workers_per_gpu,
+                run_id=run_id,
+                run_elapsed_seconds=time.monotonic() - run_started,
+                submitted_this_run=submitted,
+                attempts_per_task=a.attempts_per_task,
                 counts={t: sum(r["success"] for r in records if r["task"] == t) for t in TASKS},
                 attempts=len(records),
                 labelled=sum(r["status"] == "ok" for r in reports),
@@ -229,12 +258,15 @@ def main():
     try:
         reports.extend(annotate_record(r) for r in records)
         failure = None
-        with ThreadPoolExecutor(max_workers=len(gpus)) as pool:
+        with ThreadPoolExecutor(max_workers=len(slots)) as pool:
             active = {}
             while True:
-                if not failure:
-                    for gpu in gpus:
-                        if any(job["gpu"] == gpu for job in active.values()):
+                draining = (a.logs / "stop.request").exists()
+                if not failure and not draining:
+                    for gpu, slot in slots:
+                        if any(
+                            job["gpu"] == gpu and job["slot"] == slot for job in active.values()
+                        ):
                             continue
                         try:
                             item = next_episode(
@@ -243,12 +275,15 @@ def main():
                                 {j["task"] for j in active.values()},
                                 a.target,
                                 a.max_attempts,
+                                submitted=submitted,
+                                attempts_per_task=a.attempts_per_task,
                             )
                         except RuntimeError as error:
                             failure = str(error)
                             break
                         if item:
                             task, seed = item
+                            submitted[task] += 1
                             future = pool.submit(
                                 run_episode,
                                 task,
@@ -259,14 +294,22 @@ def main():
                                 a.sim_python,
                                 a.timeout,
                             )
-                            active[future] = dict(task=task, seed=seed, gpu=gpu)
-                status("stopping" if failure else "running", list(active.values()), failure)
+                            active[future] = dict(task=task, seed=seed, gpu=gpu, slot=slot)
+                status(
+                    "stopping" if failure or draining else "running", list(active.values()), failure
+                )
                 if not active:
                     break
                 done, _ = wait(active, timeout=30, return_when=FIRST_COMPLETED)
                 for future in done:
-                    active.pop(future)
+                    job = active.pop(future)
                     outcome = future.result()
+                    outcome.update(
+                        run_id=run_id,
+                        slot=job["slot"],
+                        workers_per_gpu=a.workers_per_gpu,
+                        finished_utc=datetime.now(timezone.utc).isoformat(),
+                    )
                     with (a.logs / "attempts.jsonl").open("a") as stream:
                         stream.write(json.dumps(outcome) + "\n")
                     if "error" in outcome:
@@ -279,6 +322,13 @@ def main():
             status("blocked", [], failure)
             raise RuntimeError(failure)
         if any(sum(r["success"] for r in records if r["task"] == t) != a.target for t in TASKS):
+            if a.attempts_per_task or (a.logs / "stop.request").exists():
+                status("paused", [])
+                save_json(
+                    a.logs / f"run-{run_id}.json", json.loads((a.logs / "status.json").read_text())
+                )
+                lock.close()
+                return
             raise RuntimeError("Final success counts differ from requested target")
         save_json(
             a.labels / "manifest.json",
@@ -290,6 +340,7 @@ def main():
             ),
         )
         status("complete", [])
+        save_json(a.logs / f"run-{run_id}.json", json.loads((a.logs / "status.json").read_text()))
         lock.close()
     except Exception as error:
         status("blocked", [], str(error))
