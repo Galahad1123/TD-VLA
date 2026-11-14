@@ -1,0 +1,51 @@
+{
+  "bert": {
+    "repo_id": "google-bert/bert-base-uncased",
+    "revision": "86b5e0934494bd15c9632b12f734a8a67f723594",
+    "files": [
+      "config.json",
+      "model.safetensors",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "vocab.txt"
+    ]
+  },
+  "vision": {
+    "repo_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+    "revision": "ea8dc2863c51be0a264bab82070e3e8836b02d51",
+    "files": [
+      "config.json",
+      "model.safetensors",
+      "preprocessor_config.json",
+      "LICENSE.md"
+    ],
+    "public_distribution": {
+      "provider": "modelscope",
+      "repo_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+      "revision": "99b6205b0321c4d9726dd072d8c6a80aa6be72df",
+      "files": {
+        "model.safetensors": "dcb2e45127cccbf1601e5f42fef165eea275c8e5213197e8dcf3f48822718179",
+        "config.json": "135ecd23e34a70b6fbed8b083fdecb319b7e3a54e3d849258bbe4ddcf1783bb5",
+        "preprocessor_config.json": "960c41d1f3a7778b936365769a2d90550b318a6c0a53a0296957adacfe5e0dd7",
+        "LICENSE.md": "25d122eb8f5b880fd23c736fb6ea8018ee45c12237e00b8a86d14c653904999e"
+      },
+      "verification": "weight SHA256 equals public LFS SHA256 of canonical HF revision; distribution is a ModelScope user upload, not claimed to be uploaded by Meta"
+    }
+  },
+  "fusion": {
+    "repo_id": "ShilongLiu/GroundingDINO",
+    "revision": "a94c9b567a2a374598f05c584e96798a170c56fb",
+    "files": [
+      "groundingdino_swint_ogc.pth"
+    ],
+    "public_distribution": {
+      "provider": "modelscope",
+      "repo_id": "AI-ModelScope/GroundingDINO",
+      "revision": "ad6aab4bfda74f778aac9890a0c6af2d067a9936",
+      "files": {
+        "groundingdino_swint_ogc.pth": "3b3ca2563c77c69f651d7bd133e97139c186df06231157a64c507099c52bc799"
+      },
+      "verification": "SHA256 equals public LFS metadata of the canonical official checkpoint revision"
+    }
+  }
+}

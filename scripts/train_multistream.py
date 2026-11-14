@@ -1,8 +1,4 @@
-"""Unified baseline/full/block diagnostic training on selected v4 data.
-
-This entry deliberately requires random-fixture-diagnostic initialization until the
-base pretrained encoder + fusion provenance has been validated for formal runs.
-"""
+"""Unified baseline/full/block training with explicit diagnostic or verified base initialization."""
 
 import argparse
 from dataclasses import asdict
@@ -24,6 +20,9 @@ from turbovla.models.turbovla import TurboVLA
 from td_vla.data.multistream import MultiStreamDataset, sha256
 from td_vla.models.multistream import TDVLA, decode_stage
 from td_vla.training.checkpoint import load_checkpoint, save_checkpoint
+from td_vla.training.initialization import verify_pretrained, load_grounding_initialization
+from td_vla.training.schedule import learning_rate_factor
+from td_vla.evaluation.offline import evaluate_fixed_subset
 from td_vla.training.losses import LossWeights, multitask_loss
 
 
@@ -70,17 +69,38 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--split", type=Path, required=True)
-    parser.add_argument("--fixtures", type=Path, required=True)
+    parser.add_argument("--fixtures", type=Path)
+    parser.add_argument("--pretrained-root", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--mode", choices=["baseline", "full", "block"])
-    parser.add_argument("--steps", type=int, default=16)
-    parser.add_argument("--save-every", type=int, default=8)
+    parser.add_argument("--steps", type=int)
+    parser.add_argument("--save-every", type=int)
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--fixed-batch", action="store_true")
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
-    if config["initialization"] != "random-fixture-diagnostic":
-        raise ValueError("Formal base/fusion initialization not yet validated by this entry")
+    args.steps = args.steps if args.steps is not None else config.get("total_steps", 16)
+    args.save_every = (
+        args.save_every if args.save_every is not None else config.get("save_every", 8)
+    )
+    if args.steps > config.get("total_steps", args.steps):
+        raise ValueError("Stopping step exceeds configured schedule total")
+    repo = Path(__file__).resolve().parents[1]
+    initialization_provenance = None
+    if config["initialization"] == "base-pretrained-v1":
+        if args.pretrained_root is None or args.fixtures is not None:
+            raise ValueError("Formal training requires --pretrained-root and forbids --fixtures")
+        specs = json.loads((repo / "configs/pretrained.json").read_text())
+        initialization_provenance = verify_pretrained(args.pretrained_root, specs)
+        config["model"]["text"]["model_name_or_path"] = str(args.pretrained_root / "bert")
+        config["model"]["vision"]["model_name_or_path"] = str(args.pretrained_root / "vision")
+    elif config["initialization"] == "random-fixture-diagnostic":
+        if args.fixtures is None or args.pretrained_root is not None:
+            raise ValueError("Diagnostic mode requires only --fixtures")
+        config["model"]["text"]["model_name_or_path"] = str(args.fixtures / "random-bert")
+        config["model"]["vision"]["model_name_or_path"] = str(args.fixtures / "random-dino")
+    else:
+        raise ValueError("Unknown initialization mode")
     if args.steps < 1 or args.save_every < 1 or config["batch_size"] < 1:
         raise ValueError("Positive steps/save interval/batch size required")
     config["mode"] = args.mode or config["mode"]
@@ -91,7 +111,7 @@ def main():
     torch.cuda.set_device(rank)
     device = torch.device("cuda", rank)
     if world > 1:
-        dist.init_process_group("nccl", timeout=timedelta(minutes=10))
+        dist.init_process_group("nccl", timeout=timedelta(minutes=10), device_id=device)
     torch.use_deterministic_algorithms(True)
     random.seed(config["seed"])
     np.random.seed(config["seed"])
@@ -108,8 +128,6 @@ def main():
     validation = MultiStreamDataset(
         args.data, split, "validation", image_size=config["model"]["vision"]["image_size"]
     )
-    config["model"]["text"]["model_name_or_path"] = str(args.fixtures / "random-bert")
-    config["model"]["vision"]["model_name_or_path"] = str(args.fixtures / "random-dino")
     cfg = TurboVLAConfig.from_mapping(config["model"])
     if not cfg.text.frozen or cfg.vision.frozen or cfg.action.horizon != split["horizon"]:
         raise ValueError("Model freeze/horizon configuration does not match v1")
@@ -126,6 +144,7 @@ def main():
         sources=provenance,
         torch=torch.__version__,
         weights=asdict(weights),
+        initialization_provenance=initialization_provenance,
     )
     signature = fingerprint(metadata)
     if rank == 0:
@@ -134,14 +153,35 @@ def main():
         TurboVLA(cfg)
         if config["mode"] == "baseline"
         else TDVLA(cfg, track_points=config["track_points"], attention=config["mode"])
-    ).to(device)
+    )
+    if initialization_provenance is not None:
+        report = load_grounding_initialization(
+            model, args.pretrained_root / "fusion/groundingdino_swint_ogc.pth"
+        )
+        if rank == 0:
+            (args.output / "initialization.json").write_text(json.dumps(report, indent=2) + "\n")
+    model.to(device)
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
-        params, lr=config["learning_rate"], weight_decay=config["weight_decay"], foreach=False
+        params,
+        lr=config["learning_rate"],
+        weight_decay=config["weight_decay"],
+        betas=tuple(config.get("betas", [0.9, 0.999])),
+        foreach=False,
     )
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda step: min(1.0, (step + 1) / max(1, config["warmup_steps"]))
-    )
+    if config.get("schedule", "warmup_constant") == "warmup_cosine":
+
+        def factor(step):
+            return learning_rate_factor(
+                step, config["warmup_steps"], config["total_steps"], config["min_lr_factor"]
+            )
+    elif config.get("schedule", "warmup_constant") == "warmup_constant":
+
+        def factor(step):
+            return min(1.0, (step + 1) / max(1, config["warmup_steps"]))
+    else:
+        raise ValueError("Unknown learning-rate schedule")
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
     wrapped = (
         torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[rank], find_unused_parameters=True
@@ -176,12 +216,16 @@ def main():
         losses["total"].backward()
         if any(p.grad is not None or p.requires_grad for p in model.text_encoder.bert.parameters()):
             raise RuntimeError("BERT must stay frozen")
-        paths = gradient_paths(model)
+        should_log = (
+            step == start or (step + 1) % config.get("log_every", 1) == 0 or step + 1 == args.steps
+        )
+        paths = gradient_paths(model) if should_log else {}
         if not all(np.isfinite(v) for v in paths.values()):
             raise RuntimeError(f"Nonfinite gradient paths: {paths}")
         if step == 0 and not all(paths[k] > 0 for k in ("vision", "fusion", "state", "action")):
             raise RuntimeError(f"Missing action gradient path: {paths}")
         norm = torch.nn.utils.clip_grad_norm_(params, 1.0, error_if_nonfinite=True)
+        used_lr = optimizer.param_groups[0]["lr"]
         optimizer.step()
         scheduler.step()
         if rank == 0:
@@ -194,12 +238,13 @@ def main():
             dist.all_reduce(values)
             values /= world
         torch.cuda.synchronize()
-        if rank == 0:
+        if rank == 0 and should_log:
             record = dict(
                 step=step + 1,
                 losses=dict(zip(losses, values.cpu().tolist())),
                 gradient_paths=paths,
                 gradient_norm=float(norm),
+                learning_rate=used_lr,
                 seconds=time.monotonic() - tick,
                 peak_memory_bytes=torch.cuda.max_memory_allocated(),
             )
@@ -207,6 +252,31 @@ def main():
             with (args.output / "metrics.jsonl").open("a") as file:
                 file.write(json.dumps(record) + "\n")
             print(json.dumps(record), flush=True)
+            status = dict(
+                state="running",
+                step=step + 1,
+                target_steps=args.steps,
+                updated_unix=time.time(),
+                last_metrics=record,
+            )
+            partial_status = args.output / "status.partial"
+            partial_status.write_text(json.dumps(status, indent=2) + "\n")
+            partial_status.replace(args.output / "status.json")
+        if config.get("validate_every", 0) and (step + 1) % config["validate_every"] == 0:
+            if world > 1:
+                dist.barrier()
+            if rank == 0:
+                result = evaluate_fixed_subset(
+                    model,
+                    validation,
+                    device,
+                    min(config["batch_size"], 32),
+                    config["validation_frames_per_episode"],
+                )
+                with (args.output / "validation.jsonl").open("a") as file:
+                    file.write(json.dumps(dict(step=step + 1, **result)) + "\n")
+            if world > 1:
+                dist.barrier()
         if (step + 1) % args.save_every == 0 or step + 1 == args.steps:
             save_checkpoint(
                 args.output / f"step-{step + 1:04d}.pt",
@@ -246,9 +316,21 @@ def main():
             validation_single_batch=val,
             first_losses=records[0]["losses"],
             last_losses=records[-1]["losses"],
-            purpose="Pipeline diagnostic; not benchmark or full-validation performance",
+            purpose=config["purpose"],
         )
         (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+        (args.output / "status.json").write_text(
+            json.dumps(
+                dict(
+                    state="completed",
+                    step=args.steps,
+                    target_steps=args.steps,
+                    updated_unix=time.time(),
+                ),
+                indent=2,
+            )
+            + "\n"
+        )
     if world > 1:
         dist.barrier()
         dist.destroy_process_group()
