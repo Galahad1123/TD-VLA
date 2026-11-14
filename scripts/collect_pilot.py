@@ -14,6 +14,8 @@ import numpy as np
 import trimesh
 import yaml
 
+from td_vla.integrations.expert_failures import play_expert
+
 ROOT = Path(__file__).resolve().parents[1]
 ROBOTWIN = ROOT / "external/RoboTwin"
 sys.path.insert(0, str(ROBOTWIN))
@@ -209,9 +211,11 @@ def run(name, seed, root):
             recorder = Recorder(task, name, file, robot_path)
             task.scene = recorder
             recorder.capture()
-            task.play_once()
+            failure = play_expert(task)
             recorder.capture()  # Save terminal state even off the sampling grid.
-            success = bool(task.plan_success and task.check_success())
+            success = bool(failure is None and task.plan_success and task.check_success())
+            if failure is not None:
+                file.attrs["expert_failure"] = json.dumps(failure)
             file.attrs["expert_success"] = success
             file.attrs["info"] = json.dumps(task.info, default=str)
             frames = len(file["qpos"])
@@ -224,6 +228,8 @@ def run(name, seed, root):
             "path": str(out.relative_to(root)),
             "sha256": digest(out),
         }
+        if failure is not None:
+            record["expert_failure"] = failure
         with (root / "manifest.jsonl").open("a") as f:
             f.write(json.dumps(record) + "\n")
         print(json.dumps(record), flush=True)

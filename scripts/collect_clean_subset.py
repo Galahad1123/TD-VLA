@@ -88,6 +88,8 @@ def run_episode(task, seed, gpu, data, logs, sim_python, timeout):
                 path=str(path.relative_to(data)),
                 sha256=digest(path),
             )
+            if "expert_failure" in f.attrs:
+                record["expert_failure"] = json.loads(f.attrs["expert_failure"])
         outcome = dict(record=record, elapsed_seconds=time.monotonic() - started, gpu=gpu)
         if not record["success"]:
             outcome["failure_log_tail"] = log.read_text(errors="replace")[-2000:]
@@ -167,6 +169,7 @@ def main():
         "src/td_vla/annotation/geometry.py",
         "src/td_vla/annotation/stages.py",
         "configs/pilot_geometry.json",
+        "src/td_vla/integrations/expert_failures.py",
     ]
     source_hashes = {name: digest(ROOT / name) for name in sources}
     provenance = dict(
