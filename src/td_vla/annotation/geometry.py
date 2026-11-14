@@ -31,3 +31,18 @@ def future_indices(current, horizon, length):
         raise ValueError("Invalid window")
     raw = current + 1 + np.arange(horizon)
     return np.minimum(raw, length - 1), raw < length
+
+
+def transform_point(pose, local_point):
+    """Transform a local point with a SAPIEN xyz + wxyz pose."""
+    pose = np.asarray(pose, dtype=np.float64)
+    q = pose[3:] / np.linalg.norm(pose[3:])
+    w, x, y, z = q
+    rotation = np.array(
+        [
+            [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+        ]
+    )
+    return rotation @ np.asarray(local_point) + pose[:3]

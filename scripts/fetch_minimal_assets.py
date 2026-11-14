@@ -103,7 +103,9 @@ def main():
             if not local.exists():
                 missing = []
                 for member in members:
-                    cached = base / member.filename
+                    cached = (base / member.filename).resolve()
+                    if not cached.is_relative_to(base.resolve()):
+                        raise ValueError(member.filename)
                     content = cached.read_bytes() if cached.is_file() else b""
                     if len(content) != member.file_size or zlib.crc32(content) != member.CRC:
                         missing.append(member)

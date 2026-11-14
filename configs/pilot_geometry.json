@@ -1,0 +1,8 @@
+{
+  "hammer_head": {
+    "asset": "020_hammer/model_data0.json",
+    "sha256": "2243f56151444b0fb800226d9a27b4560e56abd681307417451cdc02add5ca23",
+    "functional_point": 0,
+    "local_xyz": [0.0, 0.0632, 0.05135]
+  }
+}

@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10,<3.11"
 dependencies = [
   "td-vla", "turbovla", "torch==2.7.1", "torchvision==0.22.1",
-  "numpy==1.26.4", "transformers==4.57.1", "timm==1.0.25",
+  "numpy==1.26.4", "h5py==3.12.1", "transformers==4.57.1", "timm==1.0.25",
   "accelerate==1.5.2", "av==12.3.0", "msgpack==1.1.2",
   "numpydantic==1.6.9", "omegaconf==2.3.0", "opencv-python-headless==4.11.0.86",
   "pandas==2.2.3", "pyarrow==14.0.1", "pydantic==2.10.6",

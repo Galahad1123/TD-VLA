@@ -27,6 +27,7 @@ def make_split(root, tasks=None):
     root = Path(root)
     groups = {}
     fingerprints = {}
+    identities = set()
     for path in sorted(root.glob("*/*.h5")):
         if ".partial." in path.name or (tasks and path.parent.name not in tasks):
             continue
@@ -34,9 +35,16 @@ def make_split(root, tasks=None):
             if not f.attrs["expert_success"]:
                 continue
             task = str(f.attrs["task"])
+            identity = (task, int(f.attrs["seed"])) if "seed" in f.attrs else (task, str(path))
+            if identity in identities:
+                raise ValueError("Duplicate task/seed episode")
+            identities.add(identity)
         relative = str(path.relative_to(root))
         groups.setdefault(task, []).append(relative)
-        fingerprints[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest in fingerprints.values():
+            raise ValueError("Duplicate episode content")
+        fingerprints[relative] = digest
     if not groups or (tasks and set(groups) != set(tasks)):
         raise ValueError("Missing requested tasks")
     if any(len(paths) < 2 for paths in groups.values()):

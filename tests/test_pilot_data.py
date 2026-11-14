@@ -35,3 +35,12 @@ def test_split_rejects_single_episode(tmp_path):
     episode(task / "seed-0000.h5", 2)
     with pytest.raises(ValueError):
         make_split(tmp_path)
+
+
+def test_identical_episode_content_cannot_cross_split(tmp_path):
+    task = tmp_path / "lift_pot"
+    task.mkdir()
+    episode(task / "seed-0000.h5", 2)
+    (task / "seed-0001.h5").write_bytes((task / "seed-0000.h5").read_bytes())
+    with pytest.raises(ValueError, match="Duplicate"):
+        make_split(tmp_path)

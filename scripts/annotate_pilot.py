@@ -9,8 +9,8 @@ import h5py
 import numpy as np
 from PIL import Image, ImageDraw
 
-from td_vla.annotation.geometry import future_indices, project, resize_pixels
-from td_vla.annotation.stages import VOCAB, classify, stabilize
+from td_vla.annotation.geometry import future_indices, project, resize_pixels, transform_point
+from td_vla.annotation.stages import VOCAB, classify, stabilize, scene_features
 
 
 def annotate(path, output):
@@ -21,38 +21,26 @@ def annotate(path, output):
         task = f.attrs["task"]
         poses, q = f["object_pose"][:, :, :3], f["qpos"][:]
         contacts = f["finger_contact"][:]
-        # Both finger pads in contact and not open. Contact data is label-only.
-        held = contacts.all(-1) & (q[:, None, [6, 13]] < 0.8)
         n = len(q)
+        geometry = json.loads(
+            (Path(__file__).resolve().parents[1] / "configs/pilot_geometry.json").read_text()
+        )
         raw, evidence = [], []
         for t in range(n):
-            obj = poses[t, 0]
-            near = np.linalg.norm(obj[:2] - poses[t, 1, :2]) < 0.04 if poses.shape[1] > 1 else False
-            features = dict(
-                success=bool(f["success"][t]),
-                held=held[t, 0].tolist(),
-                lifted=bool(obj[2] - poses[0, 0, 2] > 0.025),
-                near_target=bool(near),
-                object_in_basket=False,
-                basket_held=False,
-                first_placed=False,
-                second_held=False,
-                ambiguous=bool(np.any(contacts[t, 0].sum(-1) == 1)),
+            features = scene_features(
+                task,
+                poses[t],
+                poses[0],
+                contacts[t],
+                q[t],
+                f["object_contact"][t],
+                f["success"][t],
+                previous=poses[t - 1] if t else None,
+                dt=float(f["time_seconds"][t] - f["time_seconds"][t - 1]) if t else 0.06,
             )
-            if task == "stack_blocks_two":
-                features.update(
-                    first_placed=bool(
-                        np.linalg.norm(obj[:2] - [0, -0.13]) < 0.035 and not held[t, 0].any()
-                    ),
-                    second_held=bool(held[t, 1].any()),
-                )
-            if task == "place_object_basket":
-                features.update(
-                    object_in_basket=bool(
-                        f["object_contact"][t, 0, 1] and np.linalg.norm(obj - poses[t, 1]) < 0.15
-                    ),
-                    basket_held=bool(held[t, 1].any()),
-                )
+            if task == "beat_block_hammer":
+                head = transform_point(f["object_pose"][t, 0], geometry["hammer_head"]["local_xyz"])
+                features["near_target"] = bool(np.linalg.norm(head[:2] - poses[t, 1, :2]) < 0.04)
             raw.append(classify(task, features))
             evidence.append(features)
         stages, stage_valid = stabilize(raw, len(VOCAB[task]) - 1)
@@ -137,7 +125,8 @@ def annotate(path, output):
             task=task,
             seed=int(f.attrs["seed"]),
             frames=n,
-            schema="pilot-labels-v1",
+            schema="pilot-labels-v2",
+            geometry_source=geometry,
             raw_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
             vocab=VOCAB[task],
             stage_counts=np.bincount(stages, minlength=len(VOCAB[task])).tolist(),

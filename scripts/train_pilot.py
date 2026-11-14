@@ -104,7 +104,10 @@ def main():
         seed=42,
     )
     signature = fingerprint(metadata)
+    print(f"rank={rank} stage=build_model", flush=True)
     model = TurboVLA(cfg).cuda()
+    torch.cuda.synchronize()
+    print(f"rank={rank} stage=model_ready", flush=True)
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(params, lr=5e-5, weight_decay=0.01, foreach=False)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda step: min(1.0, (step + 1) / 2))
@@ -128,12 +131,15 @@ def main():
         start = checkpoint["step"]
         saved_rng = checkpoint["rng"][rank]
         del checkpoint
+    print(f"rank={rank} stage=before_ddp", flush=True)
     if world > 1:
         wrapped = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[rank], find_unused_parameters=True
         )
     else:
         wrapped = model
+    torch.cuda.synchronize()
+    print(f"rank={rank} stage=ddp_ready", flush=True)
     train = PilotData(a.data, split)
     validation = PilotData(a.data, split, "validation") if rank == 0 else None
     # Initialize all objects before restoring RNG; first resumed batch uses the same global step.
@@ -148,6 +154,27 @@ def main():
             "parameters": sum(p.numel() for p in model.parameters()),
             "trainable_parameters": sum(p.numel() for p in params),
         }
+        repo = Path(__file__).resolve().parents[1]
+        provenance["source_sha256"] = {
+            str(path.relative_to(repo)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in (
+                Path(__file__).resolve(),
+                repo / "src/td_vla/data/pilot.py",
+                repo / "src/td_vla/annotation/geometry.py",
+                repo / "envs/policy/uv.lock",
+            )
+        }
+        provenance["torch"] = torch.__version__
+        provenance["cuda"] = torch.version.cuda
+        provenance["nccl"] = torch.cuda.nccl.version()
+        provenance["communication_environment"] = {
+            k: os.environ.get(k) for k in ("NCCL_IB_DISABLE", "NCCL_PROTO", "NCCL_P2P_DISABLE")
+        }
+        provenance["fixed_batch_instructions"] = (
+            [train.batch(0, r, a.batch_size, fixed=True)[0] for r in range(world)]
+            if a.fixed_batch
+            else None
+        )
         (a.output / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     loss_log = []
     for step in range(start, a.steps):

@@ -23,3 +23,10 @@ def test_future_window_excludes_current_and_masks_padding():
     indices, valid = future_indices(2, 5, 4)
     assert indices.tolist() == [3, 3, 3, 3, 3]
     assert valid.tolist() == [True, False, False, False, False]
+
+
+def test_object_functional_point_uses_orientation_and_translation():
+    from td_vla.annotation.geometry import transform_point
+
+    pose = np.array([1, 2, 3, 2**-0.5, 0, 0, 2**-0.5])
+    np.testing.assert_allclose(transform_point(pose, [1, 0, 0]), [1, 3, 3], atol=1e-12)

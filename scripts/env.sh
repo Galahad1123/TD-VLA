@@ -22,3 +22,6 @@ fi
 # This deployment is single-node; exposed IB devices hang during NCCL initialization.
 # Override with 0 only after validating the fabric for a future multi-node deployment.
 export NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"
+# NCCL's automatic/Simple protocol faults on this Blackwell container for large
+# collectives. LL passed broadcast/all-reduce up to 256 MiB on both devices.
+export NCCL_PROTO="${NCCL_PROTO:-LL}"
