@@ -3,7 +3,9 @@
 import numpy as np
 
 
-def project(points, intrinsic, world_to_cv, width, height):
+def project(
+    points, intrinsic, world_to_cv, width, height, *, include_offscreen=False, min_depth=0.0
+):
     points = np.asarray(points, dtype=np.float64)
     ext = np.asarray(world_to_cv, dtype=np.float64)
     camera = points @ ext[:3, :3].T + ext[:3, 3]
@@ -11,14 +13,11 @@ def project(points, intrinsic, world_to_cv, width, height):
     homogeneous = camera @ np.asarray(intrinsic).T
     with np.errstate(divide="ignore", invalid="ignore"):
         uv = homogeneous[..., :2] / homogeneous[..., 2:3]
-    valid = (
-        np.isfinite(uv).all(-1)
-        & (z > 0)
-        & (uv[..., 0] >= 0)
-        & (uv[..., 0] < width)
-        & (uv[..., 1] >= 0)
-        & (uv[..., 1] < height)
-    )
+    valid = np.isfinite(uv).all(-1) & (z > min_depth)
+    if not include_offscreen:
+        valid &= (
+            (uv[..., 0] >= 0) & (uv[..., 0] < width) & (uv[..., 1] >= 0) & (uv[..., 1] < height)
+        )
     return uv, z, valid
 
 
@@ -46,3 +45,29 @@ def transform_point(pose, local_point):
         ]
     )
     return rotation @ np.asarray(local_point) + pose[:3]
+
+
+def future_time_indices(times, current, offsets):
+    """Nearest timestamp (ties choose earlier); padding validity uses requested time."""
+    times, offsets = np.asarray(times, dtype=float), np.asarray(offsets, dtype=float)
+    if (
+        times.ndim != 1
+        or len(times) == 0
+        or not np.isfinite(times).all()
+        or np.any(np.diff(times) <= 0)
+        or not 0 <= current < len(times)
+        or offsets.ndim != 1
+        or len(offsets) == 0
+        or not np.isfinite(offsets).all()
+        or np.any(offsets <= 0)
+        or np.any(np.diff(offsets) <= 0)
+    ):
+        raise ValueError("Invalid timestamps or future offsets")
+    requested = times[current] + offsets
+    right = np.minimum(np.searchsorted(times, requested), len(times) - 1)
+    left = np.maximum(right - 1, 0)
+    indices = np.where(requested - times[left] <= times[right] - requested, left, right)
+    # Tiny configurable offsets must never silently select the current observation.
+    indices = np.maximum(indices, min(current + 1, len(times) - 1))
+    valid = (requested <= times[-1] + 1e-9) & (indices > current)
+    return indices, valid, requested

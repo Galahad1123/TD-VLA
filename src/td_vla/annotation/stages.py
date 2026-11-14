@@ -139,3 +139,81 @@ def scene_features(
             ),
         )
     return s
+
+
+def event_flags(task, evidence):
+    """Task-local transition predicates; no framewise validity or regression."""
+    import numpy as np
+
+    rows = []
+    for s in evidence:
+        left, right = s["held"]
+        held = left or right
+        if task in ("move_stapler_pad", "beat_block_hammer"):
+            row = [held, held and s["near_target"]]
+        elif task == "lift_pot":
+            row = [left and right]
+        elif task == "handover_block":
+            row = [left, left and right, right and not left]
+        elif task == "stack_blocks_two":
+            row = [held, s["first_placed"], s["second_held"]]
+        elif task == "place_object_basket":
+            released_inside = not held and s["object_in_basket"]
+            row = [held, released_inside, released_inside and s["basket_held"]]
+        else:
+            raise ValueError(task)
+        rows.append(row + [s["success"]])
+    return np.asarray(rows, dtype=bool), VOCAB[task][1:]
+
+
+def segment_events(times, flags, names, confirm_seconds=0.12):
+    """Confirm event runs offline, then backdate each boundary to its run start.
+
+    Success is immediate. Missing, overlapping or reversed events reject Stage
+    supervision for the episode, rather than inventing a boundary.
+    """
+    import numpy as np
+
+    times, flags = np.asarray(times, dtype=float), np.asarray(flags, dtype=bool)
+    if (
+        times.ndim != 1
+        or len(times) == 0
+        or not np.isfinite(times).all()
+        or np.any(np.diff(times) <= 0)
+        or flags.shape != (len(times), len(names))
+        or not names
+        or not np.isfinite(confirm_seconds)
+        or confirm_seconds <= 0
+    ):
+        raise ValueError("Invalid event series")
+    boundaries = []
+    previous = 0
+    for column, name in enumerate(names):
+        start = None
+        found = None
+        for t in range(len(times)):
+            if not flags[t, column]:
+                start = None
+                continue
+            if start is None:
+                start = t
+            duration = 0 if column == len(names) - 1 else confirm_seconds
+            if times[t] - times[start] + 1e-9 >= duration:
+                found = (start, t)
+                break
+        if found is None or found[0] <= previous:
+            raise ValueError(f"Missing or unordered event: {name}")
+        start, confirmed = found
+        if boundaries and boundaries[-1]["confirmed_frame"] >= start:
+            raise ValueError(f"Overlapping event confirmation: {name}")
+        boundaries.append(
+            dict(
+                event=name,
+                frame=int(start),
+                time_seconds=float(times[start]),
+                confirmed_frame=int(confirmed),
+            )
+        )
+        previous = start
+    labels = np.searchsorted([b["frame"] for b in boundaries], np.arange(len(times)), side="right")
+    return labels, boundaries

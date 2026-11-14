@@ -23,20 +23,29 @@ done
 资产脚本一次只启动一个，避免同时写清单。小型连续 ZIP 区间会一次预取，保持 ZIP CRC 和来源 revision 校验。
 本次玩具车资产远端较慢，使用本机读取相同归档区间、逐成员 CRC 验证后中转，服务器再与官方目录核验并写回执。
 
-## 数据生成与标注
+## 数据生成与 v4 标注
 
 每个任务、种子启动独立进程；已存在的 HDF5（含 partial）不会被覆盖。失败专家回合保留，但不进入训练。
 使用正式文档中的成功种子清单复现；扩大数据时从事先选定的新种子区间顺序尝试，不能依据模型得分挑种子。
 
 ```bash
 "$ROBOTWIN_PYTHON" scripts/collect_pilot.py --task move_stapler_pad --seed 0 --output data/p2-pilot
-"$ROBOTWIN_PYTHON" scripts/annotate_pilot.py --data data/p2-pilot --output logs/p2/annotations
 ```
 
 其余任务同样调用 collect_pilot.py。原始数据的 `manifest.jsonl` 保存成功/失败、帧数和文件 SHA256。
-每回合标注目录包含 labels.npz、规则依据 evidence.json、统计 report.json、阶段转换及均匀抽帧拼图 overview.jpg、
-224×224 模型输入叠图。左右臂颜色为绿色/品红色，实心路径对应未来目标轨迹，圆圈为当前中点。
-完整坐标、时间、阶段与无效规则见 [标注定义](../data/p2-annotation-rules.md)。
+旧版标签、依据和叠图已清理。新版生成命令（输出目录必须不存在）：
+
+```bash
+.venv/bin/python scripts/annotate_pilot.py --data data/p2-pilot --output data/p2-labels-v4 \
+  --track-seconds 3 --track-points 10 --confirm-seconds 0.12 --min-depth 0.0001
+```
+
+每条成功回合保存 `labels.npz`、`boundaries.json`、`report.json` 和一张 `review.jpg`。
+版本根目录 `manifest.json` 记录标签版本、源代码校验值与逐回合结果。失败专家回合仅记跳过；事件缺失的成功回合保留 Track，Stage 标为待检查。
+`track` 为 `[N,K,2,2]`；`track_valid` 为 `[N,K,2]`，由 `temporal_valid` 与 `projection_valid` 合成，`in_frame` 不参与有效性判定。
+同时保存目标时间、实际采样时间、未来索引与偏移。`stage` 与 `stage_valid` 为 `[N]`。
+全部无效的 Track 回合统计值可为 null，读取统计报告时须正确处理；训练只读取完整 manifest 对应的数据版本。
+新的双臂出画监督、稀疏 Track 和 Oracle 事件分段约定见 [标注定义](../data/p2-annotation-rules.md)。
 
 ## 短程训练
 
@@ -75,3 +84,5 @@ Masked L1 以两卡有效元素总数归一化，避免不同末尾长度造成 
 
 检查点含原版模型、优化器、调度器、EMA、各 rank Python/NumPy/CPU/CUDA RNG、步数、配置和数据指纹。
 provenance.json 保存代码提交、源码/锁文件 SHA、Torch/CUDA/NCCL 版本及通信设置。
+
+诊断结束后按工程约定清理重复恢复检查点、临时日志与测试输出。当前远端只保留最终连续运行的 step-0032.pt 及必要运行元数据；文中 step-0016.pt 需重新运行生成后才能进行恢复复现。

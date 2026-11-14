@@ -14,7 +14,7 @@ CUDA 编译工具链 12.8，cuRobo 0.7.8，SAPIEN 3.0.0b1 + OIDN 2.3.3。
 
 ## 结果与证据
 
-日志相对于远端 `/root/autodl-tmp/td-vla/logs/p1`；关键日志与图像已回传本机 `logs/p1`，不提交 Git。
+日志相对于远端 `/root/autodl-tmp/td-vla/logs/p1`；最终验收日志、环境信息与 episode-final 图像已回传本机 `logs/p1`，不提交 Git。2026-11-14 已清理安装/调试过程日志和重复测试图像，仅保留最终验收证据。
 
 | 检查 | 结果 | 证据 |
 | --- | --- | --- |
