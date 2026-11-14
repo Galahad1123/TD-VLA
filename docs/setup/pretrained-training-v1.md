@@ -61,3 +61,18 @@ envs/policy/.venv/bin/torchrun --standalone --nproc-per-node=2 \
 - 独立审查未发现阻断性训练逻辑问题。
 - 真实基础权重严格加载381个张量：BERT 199、文本投影2、text_layers 72、fusion_layers 108。
 - 每卡64完成16步真实权重短测与第8/16步固定子集验证；梯度与损失有限，峰值分配显存55,548,263,424字节（约51.7 GiB）。真实权重恢复比较及正式启动完成后另附记录。
+
+
+## 正式运行启动
+
+- 真实权重每卡64的16步短测通过；从第8步恢复至第16步，完整状态逐项精确一致。
+- 总参数434,043,444，可训练324,560,180；初始BERT为正式30522词表，DINOv3带4个register tokens。
+- 正式实验：`td-vla-clean-full-v1`，源码提交 `bc39275`。
+- 启动：北京时间2026-11-14 16:56:23；torchrun父进程PID `700769`（PID仅对应本次启动，重启会变化）。
+- 配置：每卡64，总batch128；45,000步；每5,000步保存；每1,000步固定验证子集。
+- 检查点与训练状态：`/root/autodl-tmp/td-vla/outputs/td-vla-clean-full-v1/`。
+- 启动记录与控制台日志：`/root/autodl-tmp/td-vla/logs/td-vla-clean-full-v1/`。
+- 已确认首次更新成功，损失与梯度有限。完整训练尚未完成，吞吐及ETA需随稳定运行更新；不能把启动成功写成训练完成。
+- 本轮清理约33.5 GB诊断检查点，保留基础权重、manifest、必要测试摘要和原始300条入选数据；正式运行及其日志不清理。
+
+必要验收摘要保存在双机 `logs/td-vla-v1/pretrained-validation.json`、`pretrained-real-resume.json` 与 `pretrained-manifests/`。远端GitHub拉取曾挂起，已通过SSH传输同一个已推送Git提交的bundle同步，双机源码一致。
