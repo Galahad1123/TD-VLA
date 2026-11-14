@@ -78,6 +78,8 @@ envs/policy/.venv/bin/torchrun --standalone --nproc-per-node=2 \
 
 ## 最终验证与产物
 
-本地完整测试：50 passed，3 skipped（本机轻量环境没有 PyTorch）；远端 policy 环境新增测试：15 passed。Ruff 和 git diff --check 通过。上游 timm/transformers 各有一条弃用警告，不影响本轮执行。
+本地完整测试：50 passed，3 skipped（本机轻量环境没有 PyTorch）；远端 policy 环境新增测试：15 passed；同步到实际仓库后，完整回归 **59 passed**。完整回归中的旧资产测试需要根项目 dev 组的 `remotezip==0.12.3`，本次通过清华源安装到临时目录并以 PYTHONPATH 注入，测试后清理，不修改 policy 锁文件。Ruff 和 git diff --check 通过。上游 timm/transformers 各有一条弃用警告，不影响本轮执行。
 
-审查修复后的 baseline、block、full 分别完成 4 步双卡动态采样训练；full 再从第 2 步恢复至第 4 步比较完整状态。必要配置、损失摘要和恢复结果保留于双机 `logs/td-vla-v1/`。诊断产生的大型检查点、控制台日志和隔离验证目录在完成比较后清理；原始数据、正式划分与已有环境保持保留。
+审查修复后的 baseline、block、full 分别完成 4 步双卡动态采样训练；full 再从第 2 步恢复至第 4 步，完整状态也逐项精确相同。必要配置、损失摘要和恢复结果保留于双机 `logs/td-vla-v1/`。诊断产生的大型检查点、控制台日志和隔离验证目录在完成比较后清理；原始数据、正式划分与已有环境保持保留。
+
+本轮清理六个诊断输出目录，共 55,383,032,700 字节（约 55.4 GB），以及临时验证目录和控制台日志。分支 `feature/td-vla-v1` 已通过主仓库同步双机；源码提交 `90ea83c`，后续文档提交仅补充最终验收记录。
