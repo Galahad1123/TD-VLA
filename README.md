@@ -3,7 +3,8 @@
 基于 TurboVLA 并行 action chunk 的多流 VLA 研究：同步输出动作、双臂夹爪二维目标轨迹及任务内阶段。
 第一版共享 decoder 使用全双向跨流注意力，不增加跨窗口历史模块。
 
-P1 工程与双机环境已完成运行验收，见 [验收记录](docs/setup/p1-validation.md)。
+P1 工程与双机环境已通过；P2 六任务小样本及原版动作模型诊断训练/恢复已验收，
+见 [P2 验收记录](docs/setup/p2-validation.md)和[复现说明](docs/setup/p2-pilot.md)。正式预训练基线尚未训练。
 研究计划见 [项目路线图](docs/project-roadmap.md)。
 
 ## 本机开发

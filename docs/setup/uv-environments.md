@@ -116,3 +116,5 @@ uv sync --locked --python 3.10.19 --group asset-tools
   光追验收会检查 CUDA 去噪器初始化失败，不能仅凭图片非空判定通过。
 - Git bundle 中转浅克隆时需一并保留 .git/shallow。setup_curobo.sh 先核验源码 SHA，
   再显式提供 0.7.8 给 setuptools-scm，避免仅按 SHA 获取源码时缺失 tag 造成版本号错误。
+
+P2 补充：真实模型的大消息通信还需要 NCCL_PROTO=LL，已在 env.sh 配置。原因与复现命令见 [P2 说明](p2-pilot.md)。P1 的微型 DDP 结果不代表所有通信规模都已验证。
