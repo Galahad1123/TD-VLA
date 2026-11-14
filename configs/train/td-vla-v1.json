@@ -1,0 +1,22 @@
+{
+  "purpose": "pipeline validation; auxiliary weights provisional",
+  "initialization": "random-fixture-diagnostic",
+  "mode": "full",
+  "seed": 42,
+  "batch_size": 2,
+  "learning_rate": 0.00005,
+  "weight_decay": 0.01,
+  "warmup_steps": 2,
+  "ema_decay": 0.99,
+  "loss_weights": {"action": 1.0, "track": 0.1, "stage": 0.1},
+  "track_points": 10,
+  "model": {
+    "compatibility_profile": "robotwin",
+    "text": {"frozen": true, "attention_implementation": "eager"},
+    "vision": {"image_size": 224, "num_views": 3, "frozen": false,
+               "attention_implementation": "sdpa", "position_embedding": "learned_patch"},
+    "interaction": {"padding_strategy": "zero_fill", "residual_style": "pre_norm",
+                    "attention_backend": "sdpa", "compute_precision": "bf16_autocast"},
+    "action": {"action_dim": 14, "state_dim": 14, "horizon": 50}
+  }
+}
