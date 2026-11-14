@@ -1,4 +1,5 @@
 """CV-camera projection. Pixels use integer-center coordinates; no image clipping."""
+
 import numpy as np
 
 
@@ -10,8 +11,14 @@ def project(points, intrinsic, world_to_cv, width, height):
     homogeneous = camera @ np.asarray(intrinsic).T
     with np.errstate(divide="ignore", invalid="ignore"):
         uv = homogeneous[..., :2] / homogeneous[..., 2:3]
-    valid = (np.isfinite(uv).all(-1) & (z > 0) & (uv[..., 0] >= 0)
-             & (uv[..., 0] < width) & (uv[..., 1] >= 0) & (uv[..., 1] < height))
+    valid = (
+        np.isfinite(uv).all(-1)
+        & (z > 0)
+        & (uv[..., 0] >= 0)
+        & (uv[..., 0] < width)
+        & (uv[..., 1] >= 0)
+        & (uv[..., 1] < height)
+    )
     return uv, z, valid
 
 
