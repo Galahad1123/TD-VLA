@@ -103,3 +103,8 @@ def test_basket_single_finger_support_is_not_valid():
 
 def test_contradictory_airborne_placement_is_rejected():
     assert classify("stack_blocks_two", state(lifted=True, first_placed=True))[1] is False
+
+
+def test_touching_basket_while_holding_object_remains_object_placement():
+    s = state(held=[True, False], object_in_basket=True, basket_held=True)
+    assert classify("place_object_basket", s) == (1, True)

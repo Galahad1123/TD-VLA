@@ -58,16 +58,17 @@ def classify(task, state):
             and (held or state["first_placed"] or state["second_held"] or not state["lifted"]),
         )
     if task == "place_object_basket":
-        return (
-            3
+        # Finger contact with the basket during insertion is not yet basket lifting.
+        label = (
+            1
+            if held
+            else 3
             if state["basket_held"] and state["object_in_basket"]
             else 2
             if state["object_in_basket"]
-            else 1
-            if held
-            else 0,
-            valid and (held or state["object_in_basket"] or not state["lifted"]),
+            else 0
         )
+        return label, valid and (held or state["object_in_basket"] or not state["lifted"])
     raise ValueError(task)
 
 

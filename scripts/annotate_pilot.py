@@ -125,7 +125,7 @@ def annotate(path, output):
             task=task,
             seed=int(f.attrs["seed"]),
             frames=n,
-            schema="pilot-labels-v2",
+            schema="pilot-labels-v3",
             geometry_source=geometry,
             raw_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
             vocab=VOCAB[task],
