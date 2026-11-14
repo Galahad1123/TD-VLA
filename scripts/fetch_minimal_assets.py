@@ -13,10 +13,10 @@ from download_assets import verify_cached_asset
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def selected(name, archive):
+def selected(name, archive, objects=("048_stapler",)):
     if archive == "embodiments.zip":
         return name.startswith("embodiments/aloha-agilex/")
-    return (name.startswith("objects/048_stapler/")
+    return (any(name.startswith(f"objects/{obj}/") for obj in objects)
             or name in {"objects/same.json", "objects/objaverse/list.json"})
 
 
@@ -24,7 +24,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--list-only", action="store_true")
     parser.add_argument("--archive", action="append", choices=["embodiments.zip", "objects.zip"])
+    parser.add_argument("--object", action="append", dest="objects")
     args = parser.parse_args()
+    objects = args.objects or ["048_stapler"]
+    if any("/" in obj or ".." in obj for obj in objects):
+        raise ValueError("Object names must be single directory names")
     spec = json.loads((ROOT / "configs/assets.json").read_text())["robotwin"]
     base = Path(os.environ["TD_VLA_STORAGE_ROOT"]) / "assets/robotwin-minimal"
     base.mkdir(parents=True, exist_ok=True)
@@ -39,7 +43,7 @@ def main():
         source = (zipfile.ZipFile(local) if local.exists() else
                   RemoteZip(url, timeout=120, initial_buffer_size=1024 * 1024))
         with source as stream:
-            members = [i for i in stream.infolist() if selected(i.filename, archive) and not i.is_dir()]
+            members = [i for i in stream.infolist() if selected(i.filename, archive, objects) and not i.is_dir()]
             assert members, f"No matching entries in {archive}"
             print(json.dumps({"archive": archive, "files": len(members),
                               "compressed_bytes": sum(i.compress_size for i in members)}), flush=True)

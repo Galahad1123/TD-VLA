@@ -960,6 +960,11 @@ dev = [
     { name = "pytest", specifier = "==8.3.5" },
     { name = "ruff", specifier = "==0.11.13" },
 ]
+pilot = [
+    { name = "h5py", specifier = "==3.12.1" },
+    { name = "numpy", specifier = "==1.26.4" },
+    { name = "pillow", specifier = "==11.1.0" },
+]
 
 [[package]]
 name = "td-vla-policy-env"
