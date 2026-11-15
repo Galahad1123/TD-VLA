@@ -1,0 +1,53 @@
+{
+  "purpose": "Original TurboVLA action-only baseline; matched TD-VLA Clean data and update budget",
+  "initialization": "base-pretrained-v1",
+  "mode": "baseline",
+  "seed": 42,
+  "batch_size": 64,
+  "learning_rate": 5e-05,
+  "weight_decay": 0.01,
+  "warmup_steps": 1000,
+  "ema_decay": 0.999,
+  "loss_weights": {
+    "action": 1.0,
+    "track": 0.0,
+    "stage": 0.0
+  },
+  "track_points": 10,
+  "model": {
+    "compatibility_profile": "robotwin",
+    "text": {
+      "frozen": true,
+      "attention_implementation": "eager"
+    },
+    "vision": {
+      "image_size": 224,
+      "num_views": 3,
+      "frozen": false,
+      "attention_implementation": "sdpa",
+      "position_embedding": "learned_patch"
+    },
+    "interaction": {
+      "padding_strategy": "zero_fill",
+      "residual_style": "pre_norm",
+      "attention_backend": "sdpa",
+      "compute_precision": "bf16_autocast"
+    },
+    "action": {
+      "action_dim": 14,
+      "state_dim": 14,
+      "horizon": 50
+    }
+  },
+  "total_steps": 45000,
+  "save_every": 5000,
+  "schedule": "warmup_cosine",
+  "min_lr_factor": 0.1,
+  "betas": [
+    0.9,
+    0.95
+  ],
+  "log_every": 50,
+  "validate_every": 1000,
+  "validation_frames_per_episode": 8
+}
