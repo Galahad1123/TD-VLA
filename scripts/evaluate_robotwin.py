@@ -51,12 +51,13 @@ def server(args):
             task = payload["task"]
             images = prepare_images(payload["image"], config["model"]["vision"]["image_size"])
             state = normalize_commands(payload["state"], split)
-            with torch.autocast("cuda", dtype=torch.bfloat16):
-                result = model(
-                    [payload["lang"]],
-                    torch.from_numpy(images[None]).cuda(),
-                    torch.from_numpy(state[None]).cuda(),
-                )
+            # Match training: model owns encoder autocast, decoder remains FP32.
+            result = model(
+                [payload["lang"]],
+                torch.from_numpy(images[None]).cuda(),
+                torch.from_numpy(state[None]).cuda(),
+            )
+            assert result["actions"].dtype == torch.float32
             stage = decode_stage(result["stage_logits"], [len(split["vocab"][task])])
             return dict(
                 actions=denormalize_actions(result["actions"][0].float().cpu().numpy(), split),
