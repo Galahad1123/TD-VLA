@@ -131,6 +131,9 @@ def evaluate(args):
             weights="online step 45000",
             variant="demo_clean",
             expert_check=not args.skip_expert,
+            video=args.video,
+            video_fps=10,
+            video_sampling="One head-camera frame per action call plus terminal frame; not physics-time playback",
         ),
     )
 
@@ -173,6 +176,11 @@ def evaluate(args):
             episode_start = time.time()
             task = task_class()
             record = dict(seed=seed, episode=len(records), success=False)
+            video = None
+            if args.video:
+                from td_vla.integrations.eval_video import EpisodeVideo
+
+                video = EpisodeVideo(output / f"episode-{seed}.mp4")
             try:
                 task.setup_demo(now_ep_num=len(records), seed=seed, is_test=True, **cfg)
                 task.set_instruction(instruction=INSTRUCTIONS[args.task])
@@ -180,6 +188,8 @@ def evaluate(args):
                 trace = []
                 while task.take_action_cnt < task.step_lim and not task.eval_success:
                     observation = task.get_obs()
+                    if video is not None:
+                        video.append(observation["observation"]["head_camera"]["rgb"])
                     action = policy.action(observation)
                     if (
                         args.diagnose
@@ -188,6 +198,8 @@ def evaluate(args):
                     ):
                         trace.append(stapler_snapshot(task, observation, action, output, seed))
                     task.take_action(action, action_type="qpos")
+                if video is not None:
+                    video.append(task.get_obs()["observation"]["head_camera"]["rgb"])
                 if args.diagnose and args.task == "move_stapler_pad":
                     trace.append(
                         stapler_snapshot(task, task.get_obs(), None, output, seed, final=True)
@@ -202,6 +214,9 @@ def evaluate(args):
                 record["error"] = f"{type(error).__name__}: {error}"
                 raise
             finally:
+                if video is not None:
+                    video.close()
+                    record["video_frames"] = video.frames
                 record["seconds"] = time.time() - episode_start
                 records.append(record)
                 write_json(output / "episodes.json", records)
@@ -263,6 +278,7 @@ def main():
         help="Execute requested seeds directly; never replace failed scenes",
     )
     parser.add_argument("--diagnose", action="store_true")
+    parser.add_argument("--video", action="store_true")
     parser.add_argument("--exec-horizon", type=int, default=50)
     args = parser.parse_args()
     (server if args.mode == "server" else evaluate)(args)
