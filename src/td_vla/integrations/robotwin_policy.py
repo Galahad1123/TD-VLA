@@ -55,14 +55,11 @@ class ChunkPolicy:
             self.actions = np.asarray(result["actions"])
             if self.actions.shape != (50, 14) or not np.isfinite(self.actions).all():
                 raise ValueError("Invalid action chunk")
-            self.predictions.append(
-                dict(
-                    step=self.step,
-                    seconds=time.monotonic() - start,
-                    track=np.asarray(result["track"]).tolist(),
-                    stage=int(result["stage"]),
-                )
-            )
+            record = dict(step=self.step, seconds=time.monotonic() - start)
+            if "track" in result:
+                record["track"] = np.asarray(result["track"]).tolist()
+                record["stage"] = int(result["stage"])
+            self.predictions.append(record)
         action = self.actions[self.step % self.exec_horizon]
         self.step += 1
         return action

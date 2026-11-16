@@ -42,3 +42,20 @@ def test_chunk_reset_and_action_order():
     policy.action(obs)
     assert client.calls == 3
     assert len(policy.predictions) == 1
+
+
+def test_action_only_baseline_response():
+    class Client:
+        def predict_action(self, request):
+            return {"ok": True, "data": {"actions": np.zeros((50, 14))}}
+
+    policy = ChunkPolicy(Client(), "lift_pot")
+    obs = {
+        "joint_action": {"vector": np.zeros(14)},
+        "observation": {
+            k: {"rgb": np.zeros((8, 8, 3), dtype=np.uint8)}
+            for k in ["head_camera", "left_camera", "right_camera"]
+        },
+    }
+    np.testing.assert_array_equal(policy.action(obs), np.zeros(14))
+    assert "track" not in policy.predictions[0] and "stage" not in policy.predictions[0]

@@ -22,6 +22,7 @@ def write_json(path, value):
 
 def server(args):
     import torch
+    from turbovla.models.turbovla import TurboVLA
     from turbovla.models.configuration import TurboVLAConfig
     from td_vla.models.multistream import TDVLA, decode_stage
     from td_vla.data.multistream import normalize_commands, denormalize_actions, sha256
@@ -36,10 +37,14 @@ def server(args):
     signature = hashlib.sha256(json.dumps(metadata, sort_keys=True).encode()).hexdigest()
     assert checkpoint["step"] == 45000 and checkpoint["signature"] == signature
     torch.manual_seed(42)
-    model = TDVLA(
-        TurboVLAConfig.from_mapping(config["model"]),
-        track_points=config["track_points"],
-        attention=config["mode"],
+    model = (
+        TurboVLA(TurboVLAConfig.from_mapping(config["model"]))
+        if config["mode"] == "baseline"
+        else TDVLA(
+            TurboVLAConfig.from_mapping(config["model"]),
+            track_points=config["track_points"],
+            attention=config["mode"],
+        )
     )
     model.load_state_dict(checkpoint["model"], strict=True)
     model.cuda().eval()
@@ -57,6 +62,9 @@ def server(args):
                 torch.from_numpy(images[None]).cuda(),
                 torch.from_numpy(state[None]).cuda(),
             )
+            if isinstance(result, torch.Tensor):
+                assert result.dtype == torch.float32
+                return dict(actions=denormalize_actions(result[0].cpu().numpy(), split))
             assert result["actions"].dtype == torch.float32
             stage = decode_stage(result["stage_logits"], [len(split["vocab"][task])])
             return dict(
