@@ -130,7 +130,7 @@ def evaluate(args):
             instruction_mode="fixed training instruction",
             weights="online step 45000",
             variant="demo_clean",
-            expert_check=True,
+            expert_check=not args.skip_expert,
         ),
     )
 
@@ -153,22 +153,23 @@ def evaluate(args):
         while len(records) < args.episodes:
             if seed >= args.seed + 1000:
                 raise RuntimeError("Exceeded expert seed search limit")
-            task = task_class()
-            accepted = False
-            try:
-                task.setup_demo(now_ep_num=len(records), seed=seed, is_test=True, **cfg)
-                task.play_once()
-                accepted = bool(task.plan_success and task.check_success())
+            if not args.skip_expert:
+                task = task_class()
+                accepted = False
+                try:
+                    task.setup_demo(now_ep_num=len(records), seed=seed, is_test=True, **cfg)
+                    task.play_once()
+                    accepted = bool(task.plan_success and task.check_success())
+                    if not accepted:
+                        rejected.append(dict(seed=seed, reason="expert_failed"))
+                except Exception as error:
+                    rejected.append(dict(seed=seed, reason=f"{type(error).__name__}: {error}"))
+                finally:
+                    task.close_env()
+                write_json(output / "expert-rejections.json", rejected)
                 if not accepted:
-                    rejected.append(dict(seed=seed, reason="expert_failed"))
-            except Exception as error:
-                rejected.append(dict(seed=seed, reason=f"{type(error).__name__}: {error}"))
-            finally:
-                task.close_env()
-            write_json(output / "expert-rejections.json", rejected)
-            if not accepted:
-                seed += 1
-                continue
+                    seed += 1
+                    continue
             episode_start = time.time()
             task = task_class()
             record = dict(seed=seed, episode=len(records), success=False)
@@ -176,8 +177,22 @@ def evaluate(args):
                 task.setup_demo(now_ep_num=len(records), seed=seed, is_test=True, **cfg)
                 task.set_instruction(instruction=INSTRUCTIONS[args.task])
                 policy.reset()
+                trace = []
                 while task.take_action_cnt < task.step_lim and not task.eval_success:
-                    task.take_action(policy.action(task.get_obs()), action_type="qpos")
+                    observation = task.get_obs()
+                    action = policy.action(observation)
+                    if (
+                        args.diagnose
+                        and args.task == "move_stapler_pad"
+                        and task.take_action_cnt % 10 == 0
+                    ):
+                        trace.append(stapler_snapshot(task, observation, action, output, seed))
+                    task.take_action(action, action_type="qpos")
+                if args.diagnose and args.task == "move_stapler_pad":
+                    trace.append(
+                        stapler_snapshot(task, task.get_obs(), None, output, seed, final=True)
+                    )
+                    write_json(output / f"trace-{seed}.json", trace)
                 record.update(
                     success=bool(task.eval_success),
                     steps=task.take_action_cnt,
@@ -204,6 +219,33 @@ def evaluate(args):
         client.close()
 
 
+def stapler_snapshot(task, observation, action, output, seed, final=False):
+    import numpy as np
+    from PIL import Image
+
+    stapler, pad = task.stapler.get_pose(), task.pad.get_pose()
+    state = np.asarray(observation["joint_action"]["vector"])
+    record = dict(
+        step=task.take_action_cnt,
+        stapler_id=int(task.stapler_id),
+        stapler_p=stapler.p.tolist(),
+        stapler_q=stapler.q.tolist(),
+        pad_p=pad.p.tolist(),
+        position_error=(stapler.p - pad.p).tolist(),
+        orientation_spread=float(np.ptp(np.abs(stapler.q))),
+        left_open=bool(task.robot.is_left_gripper_open()),
+        right_open=bool(task.robot.is_right_gripper_open()),
+        state=state.tolist(),
+        action=None if action is None else np.asarray(action).tolist(),
+        success=bool(task.check_success()),
+    )
+    if final or task.take_action_cnt % 50 == 0:
+        Image.fromarray(observation["observation"]["head_camera"]["rgb"]).save(
+            output / f"seed-{seed}-step-{task.take_action_cnt:04d}.png"
+        )
+    return record
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["server", "evaluate"])
@@ -215,6 +257,12 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--seed", type=int, default=100000)
+    parser.add_argument(
+        "--skip-expert",
+        action="store_true",
+        help="Execute requested seeds directly; never replace failed scenes",
+    )
+    parser.add_argument("--diagnose", action="store_true")
     parser.add_argument("--exec-horizon", type=int, default=50)
     args = parser.parse_args()
     (server if args.mode == "server" else evaluate)(args)
