@@ -1,0 +1,223 @@
+{
+  "config": {
+    "purpose": "Clean-only TD-VLA v1; pretrained initialization required",
+    "initialization": "base-pretrained-v1",
+    "mode": "full",
+    "seed": 42,
+    "batch_size": 64,
+    "learning_rate": 5e-05,
+    "weight_decay": 0.01,
+    "warmup_steps": 1000,
+    "ema_decay": 0.999,
+    "loss_weights": {
+      "action": 1.0,
+      "track": 0.1,
+      "stage": 0.1
+    },
+    "track_points": 10,
+    "model": {
+      "compatibility_profile": "robotwin",
+      "text": {
+        "frozen": true,
+        "attention_implementation": "eager",
+        "model_name_or_path": "/root/autodl-tmp/td-vla/pretrained/base-v1/bert"
+      },
+      "vision": {
+        "image_size": 224,
+        "num_views": 3,
+        "frozen": false,
+        "attention_implementation": "sdpa",
+        "position_embedding": "learned_patch",
+        "model_name_or_path": "/root/autodl-tmp/td-vla/pretrained/base-v1/vision"
+      },
+      "interaction": {
+        "padding_strategy": "zero_fill",
+        "residual_style": "pre_norm",
+        "attention_backend": "sdpa",
+        "compute_precision": "bf16_autocast"
+      },
+      "action": {
+        "action_dim": 14,
+        "state_dim": 14,
+        "horizon": 50
+      }
+    },
+    "total_steps": 45000,
+    "save_every": 5000,
+    "schedule": "warmup_cosine",
+    "min_lr_factor": 0.1,
+    "betas": [
+      0.9,
+      0.95
+    ],
+    "log_every": 50,
+    "validate_every": 1000,
+    "validation_frames_per_episode": 8
+  },
+  "split_sha256": "8a3d0b21e44bcab359910374fa8a8a8c6775d38f80bb2ea0adffd9f7e101e6e8",
+  "world_size": 2,
+  "fixed_batch": false,
+  "sources": {
+    "scripts/train_multistream.py": "e5f5f186e99124b92c973f69b9389de8d4477281e8b6454e448bebc52982bf1b",
+    "src/td_vla/__init__.py": "91447944015cec709e8aa7655f7e9d64e1e4508e7023a57fe3746911c0fc6fed",
+    "src/td_vla/annotation/__init__.py": "ceeec958a847e836db8894c49494fd83652ccce355c9c0d34638f486d3bc2b8a",
+    "src/td_vla/annotation/geometry.py": "8d7442907e428488b3b1df7659427f980b2be7907b70327f7c9ac9c8ccf1ad8b",
+    "src/td_vla/annotation/stages.py": "2544ef10aecfc68021346e9135812b3fbf1ef52945b26e8c55e748173e0cd2a9",
+    "src/td_vla/data/__init__.py": "1d581878993f690ca60dad7bcc3baafd5a778c88089068576d6c9053a3a60bfe",
+    "src/td_vla/data/multistream.py": "83057ef68d0333782ce79cb048d56ae92425c97d66737786ece1982b8f30f520",
+    "src/td_vla/data/pilot.py": "70924a854ae3e3cff190fe9124a654dea43b6a0772567d9d0f76343797c335dc",
+    "src/td_vla/evaluation/__init__.py": "cecd02251084020de8c7f703668d51f195f8414ebc1e391cdb890bc9b8f1e2fd",
+    "src/td_vla/evaluation/offline.py": "6cfab8b6f0fea29b2e8ac5e8133dcca082704c12073c30adda45fe1beac4490a",
+    "src/td_vla/integrations/__init__.py": "07c7b544a83264d5dff38a5aaa967247ed9bdfbe0075535345ecd6110371cb49",
+    "src/td_vla/integrations/expert_failures.py": "ce94bc9922e977b848e7e80785e1b74e2df1d0d386b5507edc7b2b17e5474489",
+    "src/td_vla/models/__init__.py": "84233b6d16af49011454ad8b5c308573a47be5e27e7445c8e94dc2ef89a1eaa6",
+    "src/td_vla/models/multistream.py": "6c14e6ef50528b12cf2a0a481cf8763540ef3ae7fee35e529e19d67bb5ab9e7d",
+    "src/td_vla/training/__init__.py": "2d070d268ce23d28172e97d6f5b180b3f88c335222f07b680f2385b2d37910bb",
+    "src/td_vla/training/checkpoint.py": "a5d10673001d118b3739b5c65a65e2dfe680c6accf689184ee798b02916b85b1",
+    "src/td_vla/training/initialization.py": "32541be438f446ff9c955269329cd3fdba7622baf595a7239608f143d1dbce62",
+    "src/td_vla/training/losses.py": "f1a6eadf578b52ea6490bdd7cfc23ca75da7e72448476c586def8f2b53c870cb",
+    "src/td_vla/training/schedule.py": "524231fc127f32cd5f16669eb8b9f33d169888313dee93db17348b45e3dd1652"
+  },
+  "torch": "2.7.1+cu128",
+  "weights": {
+    "action": 1.0,
+    "track": 0.1,
+    "stage": 0.1
+  },
+  "initialization_provenance": {
+    "bert": {
+      "schema": "td-vla-pretrained-v1",
+      "repo_id": "google-bert/bert-base-uncased",
+      "revision": "86b5e0934494bd15c9632b12f734a8a67f723594",
+      "files": [
+        "config.json",
+        "model.safetensors",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.txt"
+      ],
+      "artifacts": [
+        {
+          "file": "config.json",
+          "sha256": "7160e1553ad2ca51d8c1cb066be533db31826e12d173824c1bb0cb1a4f187d20",
+          "bytes": 570
+        },
+        {
+          "file": "model.safetensors",
+          "sha256": "68d45e234eb4a928074dfd868cead0219ab85354cc53d20e772753c6bb9169d3",
+          "bytes": 440449768
+        },
+        {
+          "file": "tokenizer.json",
+          "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98",
+          "bytes": 466062
+        },
+        {
+          "file": "tokenizer_config.json",
+          "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10",
+          "bytes": 48
+        },
+        {
+          "file": "vocab.txt",
+          "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+          "bytes": 231508
+        }
+      ],
+      "download_source": {
+        "provider": "huggingface",
+        "repo_id": "google-bert/bert-base-uncased",
+        "revision": "86b5e0934494bd15c9632b12f734a8a67f723594"
+      }
+    },
+    "vision": {
+      "schema": "td-vla-pretrained-v1",
+      "repo_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+      "revision": "ea8dc2863c51be0a264bab82070e3e8836b02d51",
+      "files": [
+        "config.json",
+        "model.safetensors",
+        "preprocessor_config.json",
+        "LICENSE.md"
+      ],
+      "public_distribution": {
+        "provider": "modelscope",
+        "repo_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "revision": "99b6205b0321c4d9726dd072d8c6a80aa6be72df",
+        "files": {
+          "model.safetensors": "dcb2e45127cccbf1601e5f42fef165eea275c8e5213197e8dcf3f48822718179",
+          "config.json": "135ecd23e34a70b6fbed8b083fdecb319b7e3a54e3d849258bbe4ddcf1783bb5",
+          "preprocessor_config.json": "960c41d1f3a7778b936365769a2d90550b318a6c0a53a0296957adacfe5e0dd7",
+          "LICENSE.md": "25d122eb8f5b880fd23c736fb6ea8018ee45c12237e00b8a86d14c653904999e"
+        },
+        "verification": "weight SHA256 equals public LFS SHA256 of canonical HF revision; distribution is a ModelScope user upload, not claimed to be uploaded by Meta"
+      },
+      "artifacts": [
+        {
+          "file": "config.json",
+          "sha256": "135ecd23e34a70b6fbed8b083fdecb319b7e3a54e3d849258bbe4ddcf1783bb5",
+          "bytes": 745
+        },
+        {
+          "file": "model.safetensors",
+          "sha256": "dcb2e45127cccbf1601e5f42fef165eea275c8e5213197e8dcf3f48822718179",
+          "bytes": 1212559808
+        },
+        {
+          "file": "preprocessor_config.json",
+          "sha256": "960c41d1f3a7778b936365769a2d90550b318a6c0a53a0296957adacfe5e0dd7",
+          "bytes": 585
+        },
+        {
+          "file": "LICENSE.md",
+          "sha256": "25d122eb8f5b880fd23c736fb6ea8018ee45c12237e00b8a86d14c653904999e",
+          "bytes": 7503
+        }
+      ],
+      "download_source": {
+        "provider": "modelscope",
+        "repo_id": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "revision": "99b6205b0321c4d9726dd072d8c6a80aa6be72df",
+        "files": {
+          "model.safetensors": "dcb2e45127cccbf1601e5f42fef165eea275c8e5213197e8dcf3f48822718179",
+          "config.json": "135ecd23e34a70b6fbed8b083fdecb319b7e3a54e3d849258bbe4ddcf1783bb5",
+          "preprocessor_config.json": "960c41d1f3a7778b936365769a2d90550b318a6c0a53a0296957adacfe5e0dd7",
+          "LICENSE.md": "25d122eb8f5b880fd23c736fb6ea8018ee45c12237e00b8a86d14c653904999e"
+        },
+        "verification": "weight SHA256 equals public LFS SHA256 of canonical HF revision; distribution is a ModelScope user upload, not claimed to be uploaded by Meta"
+      }
+    },
+    "fusion": {
+      "schema": "td-vla-pretrained-v1",
+      "repo_id": "ShilongLiu/GroundingDINO",
+      "revision": "a94c9b567a2a374598f05c584e96798a170c56fb",
+      "files": [
+        "groundingdino_swint_ogc.pth"
+      ],
+      "public_distribution": {
+        "provider": "modelscope",
+        "repo_id": "AI-ModelScope/GroundingDINO",
+        "revision": "ad6aab4bfda74f778aac9890a0c6af2d067a9936",
+        "files": {
+          "groundingdino_swint_ogc.pth": "3b3ca2563c77c69f651d7bd133e97139c186df06231157a64c507099c52bc799"
+        },
+        "verification": "SHA256 equals public LFS metadata of the canonical official checkpoint revision"
+      },
+      "artifacts": [
+        {
+          "file": "groundingdino_swint_ogc.pth",
+          "sha256": "3b3ca2563c77c69f651d7bd133e97139c186df06231157a64c507099c52bc799",
+          "bytes": 693997677
+        }
+      ],
+      "download_source": {
+        "provider": "modelscope",
+        "repo_id": "AI-ModelScope/GroundingDINO",
+        "revision": "ad6aab4bfda74f778aac9890a0c6af2d067a9936",
+        "files": {
+          "groundingdino_swint_ogc.pth": "3b3ca2563c77c69f651d7bd133e97139c186df06231157a64c507099c52bc799"
+        },
+        "verification": "SHA256 equals public LFS metadata of the canonical official checkpoint revision"
+      }
+    }
+  }
+}

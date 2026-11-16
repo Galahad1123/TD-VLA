@@ -1,0 +1,27 @@
+{
+  "experiment_id": "td-vla-clean-full-v1",
+  "pid": 700769,
+  "started_utc": "2026-11-14T08:56:23.498212+00:00",
+  "source_commit": "bc39275",
+  "command": [
+    "/root/TD-VLA/envs/policy/.venv/bin/torchrun",
+    "--standalone",
+    "--nproc-per-node=2",
+    "scripts/train_multistream.py",
+    "--config",
+    "configs/train/td-vla-clean-v1.json",
+    "--data",
+    "/root/autodl-tmp/td-vla/data/clean-six-50-selected-v1",
+    "--split",
+    "configs/data/clean-six-50-split-v1.json",
+    "--pretrained-root",
+    "/root/autodl-tmp/td-vla/pretrained/base-v1",
+    "--output",
+    "/root/autodl-tmp/td-vla/outputs/td-vla-clean-full-v1"
+  ],
+  "output": "/root/autodl-tmp/td-vla/outputs/td-vla-clean-full-v1",
+  "logs": "/root/autodl-tmp/td-vla/logs/td-vla-clean-full-v1",
+  "global_batch": 128,
+  "target_steps": 45000,
+  "save_every": 5000
+}

@@ -4,7 +4,7 @@
 第一版共享 decoder 使用全双向跨流注意力，不增加跨窗口历史模块。
 
 P1 工程与双机环境已通过；P2 六任务小样本及原版动作模型诊断训练/恢复已验收，
-见 [P2 验收记录](docs/setup/p2-validation.md)和[复现说明](docs/setup/p2-pilot.md)。正式预训练基线尚未训练。
+见 [P2 验收记录](docs/setup/p2-validation.md)和[复现说明](docs/setup/p2-pilot.md)。正式实验结果统一维护在[实验结果目录](docs/experiments/README.md)。
 旧版辅助标签已清理；[新标注约定](docs/data/p2-annotation-rules.md)已实现，六任务 v4 重标注结果见[验收报告](docs/setup/p2-annotation-v4-validation.md)。
 六任务各 50 条入选专家轨迹已就绪，300 条均有正常 Track/Stage 标签；歧义回合已按授权补采替换，训练读取入口见[入选版本](docs/setup/clean-six-50-selection.md)。
 研究计划见 [项目路线图](docs/project-roadmap.md)。

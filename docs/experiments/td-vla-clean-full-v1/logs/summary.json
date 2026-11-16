@@ -1,0 +1,27 @@
+{
+  "start_step": 0,
+  "end_step": 45000,
+  "parameters": 434043444,
+  "trainable_parameters": 324560180,
+  "validation_single_batch": {
+    "action": 0.018363598734140396,
+    "track": 0.000855924270581454,
+    "stage": 0.26032355427742004,
+    "total": 0.0444815456867218,
+    "stage_accuracy": 0.984375,
+    "stage_out_of_range": 0.0
+  },
+  "first_losses": {
+    "action": 0.4971253275871277,
+    "track": 0.3352559208869934,
+    "stage": 1.9341654777526855,
+    "total": 0.7240674495697021
+  },
+  "last_losses": {
+    "action": 0.003446524031460285,
+    "track": 0.00036007302696816623,
+    "stage": 5.26195776728855e-07,
+    "total": 0.003482583910226822
+  },
+  "purpose": "Clean-only TD-VLA v1; pretrained initialization required"
+}

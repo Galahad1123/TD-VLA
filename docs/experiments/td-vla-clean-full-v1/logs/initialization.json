@@ -1,0 +1,9 @@
+{
+  "loaded_tensors": 381,
+  "groups": {
+    "text_encoder.bert.": 199,
+    "text_encoder.text_projection.": 2,
+    "vision_language_interaction.text_layers.": 72,
+    "vision_language_interaction.fusion_layers.": 108
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "schema": "td-vla-formal-experiment-archive-v1",
+  "experiment_id": "td-vla-clean-full-v1",
+  "kind": "training",
+  "source_commit": "bc39275",
+  "original_remote_root": "F43-6000x2:/root/autodl-tmp/td-vla/outputs/td-vla-clean-full-v1",
+  "checkpoint": {
+    "filename": "step-45000.pt",
+    "step": 45000,
+    "sha256": "c1682900f6c316c5c6938e4145d277e84a2d8eba09ff9f0ee040780fc58a97bf",
+    "sha256_source": "Formal evaluation provenance for this checkpoint"
+  },
+  "files": {
+    "README.md": {
+      "sha256": "c933385411f41e4b574622422f201dc0b6d7d0c0e60034e8aff542ba7fde1ade",
+      "bytes": 5458
+    },
+    "figures/action-loss.png": {
+      "sha256": "d8f04bd6fb6fb49c1683af425840cf66ad3041d9332bbdc3404f70b882d65565",
+      "bytes": 233524
+    },
+    "figures/action-loss.svg": {
+      "sha256": "e8c5d76297668b9473d59a296fd7d8da0e757b6f49c84095a8ed40e91051a2af",
+      "bytes": 98161
+    },
+    "figures/multistream-curves.png": {
+      "sha256": "61f0a8800fdcd49c08cbcae5651804aea1ef32cd12f5194bd3bbb30ada3bab12",
+      "bytes": 276534
+    },
+    "figures/multistream-curves.svg": {
+      "sha256": "37d3f9ddb980d280ac2c92001f550b4d285a71372f29918665304083e1b8387a",
+      "bytes": 243780
+    },
+    "logs/config.json": {
+      "sha256": "2b5af5e862f2f23256fd7371637d9242453b4d546c498d0b3263bb71cdf73114",
+      "bytes": 9098,
+      "source": "logs/td-vla-clean-full-v1/config.json"
+    },
+    "logs/initialization.json": {
+      "sha256": "1237ab79ada9ff2cc084c54f6a77dd8428448a25ec04feea262b44f117630205",
+      "bytes": 224,
+      "source": "logs/td-vla-clean-full-v1/initialization.json"
+    },
+    "logs/launch.json": {
+      "sha256": "f1a7aec609bfbc4d7492a0c35a3a8b81ab1019b79a2d7f7120da2a160680ea45",
+      "bytes": 845,
+      "source": "logs/td-vla-clean-full-v1/launch.json"
+    },
+    "logs/metrics.jsonl": {
+      "sha256": "44bdc5ec5f9676846b09198b18aee4bde99ada53a18ab6f3fa82a9431117bf66",
+      "bytes": 494915,
+      "source": "logs/td-vla-clean-full-v1/metrics.jsonl"
+    },
+    "logs/status.json": {
+      "sha256": "5d73b4c2857402437030bb0477177b7aeab82c5babad6a3d22c13787b8d5f039",
+      "bytes": 107,
+      "source": "logs/td-vla-clean-full-v1/status.json"
+    },
+    "logs/summary.json": {
+      "sha256": "ef2b25a97e0f8110c6e89dea7df8051bdc760f54d04f8b722247c073a610b75a",
+      "bytes": 739,
+      "source": "logs/td-vla-clean-full-v1/summary.json"
+    },
+    "logs/validation.jsonl": {
+      "sha256": "1517fb87792a923c335fdaa2d5819e9800e57ae99a692b518a4dd526b6791e25",
+      "bytes": 55988,
+      "source": "logs/td-vla-clean-full-v1/validation.jsonl"
+    },
+    "plot_curves.py": {
+      "sha256": "0f015feeed5ee31137b0fb0d75aeb064db737a493481de5ea45d0c03bbda0fe5",
+      "bytes": 1947
+    }
+  }
+}
